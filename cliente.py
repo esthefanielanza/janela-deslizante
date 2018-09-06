@@ -1,6 +1,7 @@
 # coding=utf-8
 import socket, os, sys, threading, struct, time, md5
 
+#agora sei usar git
 def generatePackage(seqNum, line):
 	timestamp = time.time()
 	seconds = struct.pack('!q', int(timestamp))
