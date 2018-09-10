@@ -24,7 +24,6 @@ def generatePackage(seqNum, line):
 	print(len(nanoseconds))
 	print(len(msgSize))
 	print(len(msg))
-	# print(len(struct.pachchecksum))
 
 	print('\n************** MD5 **************\n')
 	print(checksum)
@@ -32,15 +31,27 @@ def generatePackage(seqNum, line):
 	return [seq, seconds, nanoseconds, msgSize, msg, checksum]
 
 
-def main(filePath, ipAddress, portNumber, windowSize, timeout, errorProbability):
+def main(filePath, ipAddress, windowSize, timeout, errorProbability):
 
 	seqNum = 0
+	currentFrame = 0
 
 	file = open(filePath, "r") 
 	for line in file:
 		currentPackage = generatePackage(seqNum, line)
+		
 		print('\n************** Package **************\n')
 		print(currentPackage)
+
+		if(currentFrame < windowSize):
+			print('Should send')
+			currentFrame += 1
+
+		else:
+			print('Should wait the ack')
+			print('After wait')
+			currentFrame = 0
+
 
 	# 	print line, 
 
@@ -66,4 +77,4 @@ def main(filePath, ipAddress, portNumber, windowSize, timeout, errorProbability)
 	# 	pass
 
 if __name__ == "__main__":
-	main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5]), float(sys.argv[6]))
+	main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5]))
