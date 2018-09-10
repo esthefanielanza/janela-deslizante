@@ -1,30 +1,35 @@
 # coding=utf-8
-import socket, os, sys, threading, struct, time, md5
+import socket, os, sys, threading, struct, time, hashlib
 
-#agora sei usar git
+def generateCheckSum(seq, seconds, nanoseconds, msgSize, msg):
+	checksum = hashlib.md5()
+	checksum.update(seq + seconds + nanoseconds + msgSize + msg)
+	return checksum.digest()
+
 def generatePackage(seqNum, line):
 	timestamp = time.time()
+	
+	# Packing Message #
+	seq = struct.pack("!q", seqNum)
 	seconds = struct.pack('!q', int(timestamp))
 	nanoseconds = struct.pack('!l', int((timestamp-int(timestamp))*pow(10,9)))
 	msgSize = struct.pack("!h", len(line))
-	
-	checksum = md5.new()
+	msg = line.encode('latin1')
 
-	# print(seconds)
+	checksum = generateCheckSum(seq, seconds, nanoseconds, msgSize, msg)
 
-	# print(struct.pack('q', seconds) + " " + str(len(struct.pack('q', seconds))))
-
-	# print(str(seconds) + str(nanoseconds) + str(msgSize) + str(line))
-	# checksum.update(timestamp + seconds + nanoseconds + msgSize + msg)
-
-	partialPackage = struct.pack("q", seqNum) + seconds + nanoseconds + line
-	print(len(struct.pack("q", seqNum)))
+	print('\n************** Sizes *************\n')
+	print(len(seq))
 	print(len(seconds))
 	print(len(nanoseconds))
-	print(len(line))
-	print(len(partialPackage))
+	print(len(msgSize))
+	print(len(msg))
+	# print(len(struct.pachchecksum))
 
-	return [timestamp, seconds, nanoseconds, msgSize, checksum]
+	print('\n************** MD5 **************\n')
+	print(checksum)
+
+	return [seq, seconds, nanoseconds, msgSize, msg, checksum]
 
 
 def main(filePath, ipAddress, portNumber, windowSize, timeout, errorProbability):
@@ -34,6 +39,9 @@ def main(filePath, ipAddress, portNumber, windowSize, timeout, errorProbability)
 	file = open(filePath, "r") 
 	for line in file:
 		currentPackage = generatePackage(seqNum, line)
+		print('\n************** Package **************\n')
+		print(currentPackage)
+
 	# 	print line, 
 
 	# try
