@@ -31,7 +31,11 @@ def generatePackage(seqNum, line):
 	return [seq, seconds, nanoseconds, msgSize, msg, checksum]
 
 
-def main(filePath, ipAddress, windowSize, timeout, errorProbability):
+def main(filePath, address, windowSize, timeout, errorProbability):
+
+	[HOST, PORT] = address.split(':')
+	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	dest = (HOST, int(PORT))
 
 	seqNum = 0
 	currentFrame = 0
@@ -44,37 +48,22 @@ def main(filePath, ipAddress, windowSize, timeout, errorProbability):
 		print(currentPackage)
 
 		if(currentFrame < windowSize):
-			print('Should send')
+			for item in currentPackage:
+				print('Sending item:', item)
+				udp.sendto(item, dest)
 			currentFrame += 1
 
 		else:
 			print('Should wait the ack')
 			print('After wait')
-			currentFrame = 0
+			msg = udp.recvfrom(1024).decode('latin1')
+			currentFrame -= 1
+			udp.sendto(item, dest)
 
 
-	# 	print line, 
-
-	# try
-	# 	socket.setdefaulttimeout(10)
-	# 	tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	# 	tcp.connect((ipAddress, portNumber))
-
-	# 	tcp.send(struct.pack('!1i', len(stringContent)))
-	# 	tcp.send (rotated_word(stringContent, cesarFactor).encode('latin1'))
-	# 	tcp.send(struct.pack('!1i', cesarFactor))
-
-	# 	msg = tcp.recv(len(stringContent)).decode('latin1')
-
-	# 	print(msg)
-	# 	tcp.close()
-		
-	# except (ValueError, socket.error, socket.gaierror, socket.herror):
-	# 	print("Atenção: Erro de conexão com o servidor.")
-	# 	pass
-	# except (socket.timeout):
-	# 	print("Atenção: Tempo limite com o servidor excedido. Tente novamente mais tarde.")
-	# 	pass
+		print('Ending ~')
 
 if __name__ == "__main__":
-	main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5]))
+	main(sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5]))
+
+# Run command: python client.py teste.txt 127.0.0.1:5000 1 1 1
