@@ -63,6 +63,8 @@ def main(filePath, address, windowSize, timeout, errorProbability):
 
 		print('Ending ~')
 
+	udp.close()
+
 if __name__ == "__main__":
 	main(sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5]))
 
