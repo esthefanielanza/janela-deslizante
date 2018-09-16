@@ -8,7 +8,7 @@ def generateCheckSum(seq, seconds, nanoseconds, msgSize, msg):
 
 def generatePackage(seqNum, line):
 	timestamp = time.time()
-	
+
 	# Packing Message #
 	seq = struct.pack("!q", seqNum)
 	seconds = struct.pack('!q', int(timestamp))
@@ -28,7 +28,7 @@ def generatePackage(seqNum, line):
 	print('\n************** MD5 **************\n')
 	print(checksum)
 
-	return [seq, seconds, nanoseconds, msgSize, msg, checksum]
+	return seq + seconds + nanoseconds + msgSize + msg + checksum
 
 
 def main(filePath, address, windowSize, timeout, errorProbability):
@@ -48,9 +48,8 @@ def main(filePath, address, windowSize, timeout, errorProbability):
 		print(currentPackage)
 
 		if(currentFrame < windowSize):
-			for item in currentPackage:
-				print('Sending item:', item)
-				udp.sendto(item, dest)
+			print('Sending item:', currentPackage)
+			udp.sendto(currentPackage, dest)
 			currentFrame += 1
 
 		else:
@@ -58,7 +57,7 @@ def main(filePath, address, windowSize, timeout, errorProbability):
 			print('After wait')
 			msg = udp.recvfrom(1024).decode('latin1')
 			currentFrame -= 1
-			udp.sendto(item, dest)
+			udp.sendto(currentPackage, dest)
 
 
 		print('Ending ~')
