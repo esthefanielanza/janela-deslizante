@@ -17,7 +17,7 @@ def main(filePath, port, windowSize, errorProbability):
   
   # Receiving data #
   # Sum of the max sizes #
-  package = udp.recvfrom(131110)[0]
+  package = udp.recvfrom(65574)[0]
   print(package)
   
   seqnum = package[0:8]
@@ -28,13 +28,13 @@ def main(filePath, port, windowSize, errorProbability):
   msgSize = struct.unpack('!h', sz)[0]
 
   message = package[22:22+msgSize]
-  md5 = package[22+msgSize:22+msgSize+16]
+  receivedChecksum = package[22+msgSize:22+msgSize+16]
   
   # Checksum #
   checksum = generateCheckSum(seqnum, sec, nsec, sz, message)
 
   # Valid message #
-  if(checksum == md5):
+  if(checksum == receivedChecksum):
     print('Valid message!')
   
     seqnum = struct.unpack('!q', seqnum)[0]
