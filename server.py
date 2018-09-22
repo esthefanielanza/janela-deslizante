@@ -49,6 +49,9 @@ def main(filePath, port, windowSize, errorProbability):
     print('sz', msgSize)
     print('message', message)
 
+  else: 
+    print('Wrong checksum')
+
   udp.close()
 
 if __name__ == "__main__":

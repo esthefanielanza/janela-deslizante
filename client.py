@@ -1,13 +1,16 @@
 # coding=utf-8
-import socket, os, sys, threading, struct, time, hashlib
+import socket, os, sys, threading, struct, time, hashlib, random
+def generateErrorChecksum(seq, seqNum, pError):
+	if(random.random() < pError):
+		return struct.pack("!q", seqNum + 1)
+	return seq
 
 def generateCheckSum(package):
-	print(package)
 	checksum = hashlib.md5()
 	checksum.update(package)
 	return checksum.digest()
 
-def generatePackage(seqNum, line):
+def generatePackage(seqNum, line, pError):
 	timestamp = time.time()
 
 	# Packing Message #
@@ -17,11 +20,10 @@ def generatePackage(seqNum, line):
 	msgSize = struct.pack("!h", len(line))
 	msg = line.encode('latin1')
 
-	partialPackage = seq + seconds + nanoseconds + msgSize + msg
+	# Simulating error on checksum changing the seq number #
+	checksum = generateCheckSum(generateErrorChecksum(seq, seqNum, pError) + seconds + nanoseconds + msgSize + msg)
 	
-	checksum = generateCheckSum(partialPackage)
-
-	return partialPackage + checksum
+	return seq + seconds + nanoseconds + msgSize + msg + checksum
 
 def waitPackageAck(currentPackage, lastReceivedAck, window, udp, dest):
 	print('Waiting')
@@ -34,14 +36,13 @@ def waitPackageAck(currentPackage, lastReceivedAck, window, udp, dest):
 	nsec = ackPackage[16:20]
 	receivedChecksum = ackPackage[20:36]
 	
-	checksum = generateCheckSum(seqnum + sec + nsec)
+	checksum = generateCheckSum(seqnum + sec + nsec, 0)
 
 	seqnum = struct.unpack('!q', seqnum)[0]
 
 	if(checksum == receivedChecksum):
 		print('Received correct Ack, move window!')
 		if(lastReceivedAck == seqnum):
-			window[0][1] = 1
 			window.pop()
 
 			while(window[0][1] == 1):
@@ -57,7 +58,7 @@ def waitPackageAck(currentPackage, lastReceivedAck, window, udp, dest):
 		print('Received incorrect Ack, should resend the package')
 		udp.sendto(sentPackages[seqnum])
 
-def main(filePath, address, windowSize, timeout, errorProbability):
+def main(filePath, address, windowSize, timeout, pError):
 
 	[HOST, PORT] = address.split(':')
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -70,7 +71,7 @@ def main(filePath, address, windowSize, timeout, errorProbability):
 
 	file = open(filePath, "r") 
 	for line in file:
-		currentPackage = generatePackage(seqNum, line)
+		currentPackage = generatePackage(seqNum, line, pError)
 		
 		print('\n************** Package **************\n')
 		print(currentPackage)
@@ -85,9 +86,6 @@ def main(filePath, address, windowSize, timeout, errorProbability):
 			waitPackageAck(currentPackage, lastReceivedAck, window, udp, dest)
 
 		print('Ending ~')
-
-	# while(len(sentPackages) !== receivedPackages):
-	# 	waitPackageAck(null, receivedPackages)
 
 	udp.close()
 
