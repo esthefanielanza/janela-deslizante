@@ -3,6 +3,8 @@ import socket, os, sys, struct, time, hashlib, random
 import 	threading
 
 lock = threading.Lock()
+messagesSent = 0
+incorrectChecksum = 0
 
 def generateErrorChecksum(seq, seqNum, pError):
 	if(random.random() < pError):
@@ -29,31 +31,26 @@ def generatePackage(seqNum, line, pError):
 	
 	return seq + seconds + nanoseconds + msgSize + msg + checksum
 
-def readFile(filePath, pError):
-	seqNum = 0
-	messages = []
-    
-	file = open(filePath, "r") 
-        
-	for line in file: 
-		seqNum += 1
-		messages.append(generatePackage(seqNum,line,pError))
-
-	return messages
+def readFile(filePath):
+	with open(filePath, "r") as f:
+		return f.readlines() 
 
 def firstUnconfirmedItem(confirmations):
 	for i in range(len(confirmations)):
 		if confirmations[i] == 0: return i
 	return -1
 
-def sendMessage(packages, confirmations, i, udp, dest):
+def sendMessage(lines, pError, confirmations, i, udp, dest, timeout):
 	try:
-		print('====== Package ======')
-		print('i', i)
-		print('package', packages[i])
+		global messagesSent, incorrectChecksum
+		
+		package = generatePackage(i + 1, lines[i], pError)
+		udp.sendto(package, dest)
 
-		udp.sendto(packages[i], dest)
-		print(confirmations[i])
+		lock.acquire()
+		messagesSent += 1
+		lock.release()
+
 		while(not confirmations[i]):
 
 			ackPackage = udp.recvfrom(36)[0]		
@@ -70,37 +67,45 @@ def sendMessage(packages, confirmations, i, udp, dest):
 			if(checksum == receivedChecksum):
 				lock.acquire()
 				confirmations[receivedMessageNum] = 1
-				print('RECEIVED ========= ', receivedMessageNum)
-				print(confirmations)
 				lock.release()
-			else:
-				# timeout
-				udp.sendto(packages[receivedMessageNum], 1)
-	except:
-		print("Extrapolou o tempo do servidor")
-		if(not confirmations[i]):
-			sendMessage(packages, confirmations, i, udp, dest)
 
-	#morre thread
-	print('==== Ended thread', i)
+			else:
+				time.sleep(timeout)
+				package = generatePackage(receivedMessageNum, lines[receivedMessageNum], pError)
+				udp.sendto(package, dest)
+
+
+				lock.acquire()
+				messagesSent += 1
+				incorrectChecksum += 1
+				lock.release()
+				
+
+	except Exception as e:
+		if(not confirmations[i]):
+			sendMessage(lines, pError, confirmations, i, udp, dest, timeout)
 
 def main(filePath, address, windowSize, timeout, pError):
+	global messagesSent, incorrectChecksum
 
+	start = time.time()
+	
+	# Setting the socket
 	[HOST, PORT] = address.split(':')
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	udp.settimeout(timeout)
 	dest = (HOST, int(PORT))
-
-	packages = readFile(filePath, pError)
-	threads = [None] * len(packages)
-	confirmations = [0] * len(packages)
-
-	item = firstUnconfirmedItem(confirmations)
 	
+	lines = readFile(filePath)
+	threads = [None] * len(lines)
+	confirmations = [0] * len(lines)
+	item = firstUnconfirmedItem(confirmations)
+
+	# Starting threads
 	for i in range(len(threads)):
-		threads[i] = threading.Thread(target=sendMessage, args=(packages,confirmations,i, udp, dest))
-		print(threads)
-		# Should wait the ack for first message
+		threads[i] = threading.Thread(target=sendMessage, args=(lines, pError, confirmations, i, udp, dest, timeout))
+
+		# Window is defined with the number of running threads, this is the window lock
 		if(threading.active_count() > windowSize):
 			while(not confirmations[item]):
 				pass
@@ -108,14 +113,14 @@ def main(filePath, address, windowSize, timeout, pError):
 		
 		threads[i] = threads[i].start()
 
-	print('here')
+	# Client should end if all the packages were sent
 	while(firstUnconfirmedItem(confirmations) != -1):
 		pass
 		
-	print('Ending ~')
 	udp.close()
+	end = time.time()
 
-	print('Ending 2')
+	print('%d %d %d %.3fs' % (len(lines), messagesSent, incorrectChecksum, end - start))
 
 if __name__ == "__main__":
 	main(sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5]))
