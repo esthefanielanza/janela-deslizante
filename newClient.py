@@ -47,35 +47,39 @@ def firstUnconfirmedItem(confirmations):
 	return -1
 
 def sendMessage(packages, confirmations, i, udp, dest):
-	print('====== Package ======')
-	print('i', i)
-	print('package', packages[i])
-	udp.sendto(packages[i], dest)
-	print(confirmations[i])
-	while(not confirmations[i]):
-		print('receiving') 
-		print('Thread i', i)
+	try:
+		print('====== Package ======')
+		print('i', i)
+		print('package', packages[i])
 
-		ackPackage = udp.recvfrom(36)[0]		
-		
-		# Reading Ack
-		seq = ackPackage[0:8]
-		sec = ackPackage[8:16]
-		nsec = ackPackage[16:20]
-		receivedChecksum = ackPackage[20:36]
-		checksum = generateCheckSum(seq + sec + nsec)
-		
-		receivedMessageNum = struct.unpack('!q', seq)[0] - 1
-		
-		if(checksum == receivedChecksum):
-			lock.acquire()
-			confirmations[receivedMessageNum] = 1
-			print('RECEIVED ========= ', receivedMessageNum)
-			print(confirmations)
-			lock.release()
-		else:
-			# timeout
-			udp.sendto(packages[receivedMessageNum], 1)
+		udp.sendto(packages[i], dest)
+		print(confirmations[i])
+		while(not confirmations[i]):
+
+			ackPackage = udp.recvfrom(36)[0]		
+
+			# Reading Ack
+			seq = ackPackage[0:8]
+			sec = ackPackage[8:16]
+			nsec = ackPackage[16:20]
+			receivedChecksum = ackPackage[20:36]
+			checksum = generateCheckSum(seq + sec + nsec)
+			
+			receivedMessageNum = struct.unpack('!q', seq)[0] - 1
+			
+			if(checksum == receivedChecksum):
+				lock.acquire()
+				confirmations[receivedMessageNum] = 1
+				print('RECEIVED ========= ', receivedMessageNum)
+				print(confirmations)
+				lock.release()
+			else:
+				# timeout
+				udp.sendto(packages[receivedMessageNum], 1)
+	except:
+		print("Extrapolou o tempo do servidor")
+		if(not confirmations[i]):
+			sendMessage(packages, confirmations, i, udp, dest)
 
 	#morre thread
 	print('==== Ended thread', i)
@@ -84,29 +88,18 @@ def main(filePath, address, windowSize, timeout, pError):
 
 	[HOST, PORT] = address.split(':')
 	udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	udp.settimeout(timeout)
 	dest = (HOST, int(PORT))
 
 	packages = readFile(filePath, pError)
 	threads = [None] * len(packages)
 	confirmations = [0] * len(packages)
 
-	
-	#[1,2,3,4,5]
-	#[0,0,0,0,0]
-
-	#3
-
-	#Threads
-	#[1,2,3] - 
-	#firstUnconf. = 2
-	#[2,3]
-
-
 	item = firstUnconfirmedItem(confirmations)
 	
 	for i in range(len(threads)):
 		threads[i] = threading.Thread(target=sendMessage, args=(packages,confirmations,i, udp, dest))
-
+		print(threads)
 		# Should wait the ack for first message
 		if(threading.active_count() > windowSize):
 			while(not confirmations[item]):
@@ -121,9 +114,8 @@ def main(filePath, address, windowSize, timeout, pError):
 		
 	print('Ending ~')
 	udp.close()
+
 	print('Ending 2')
 
 if __name__ == "__main__":
 	main(sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5]))
-
-# Run command: python newClient.py teste.txt 127.0.0.1:5000 1 1 1
