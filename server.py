@@ -1,60 +1,121 @@
 # coding=utf-8
-import socket, os, sys, threading, struct, time, hashlib
+import socket, os, sys, struct, time, hashlib, random
+import threading
 
-def generateCheckSum(seq, seconds, nanoseconds, msgSize, msg):
+lock = threading.Lock()
+
+def generateCheckSum(package):
 	checksum = hashlib.md5()
-	checksum.update(seq + seconds + nanoseconds + msgSize + msg)
+	checksum.update(package)
 	return checksum.digest()
 
-def main(filePath, port, windowSize, errorProbability):
-  host = ''
-  udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  orig = (host, port)
-  udp.bind(orig)
+def needsRetransmission(seqnum, clientsWindows, address):
+  return (seqnum <= clientsWindows[address][1])
 
+def isInsideWindow(seqnum, clientsWindows, address):
+  return (clientsWindows[address][0] <= seqnum) and (seqnum <= clientsWindows[address][0]+clientsWindows[address][1])
 
-  print('Receiving ~')
-  
-  # Receiving data #
-  # Sum of the max sizes #
-  package = udp.recvfrom(65574)[0]
-  print(package)
-  
-  seqnum = package[0:8]
-  sec = package[8:16]
-  nsec = package[16:20]
+def addMsgToLog(seqnum, message, file):
+  print("Saved message %d" % seqnum)
+  with open(file,'a') as f:
+    f.write(message)
 
-  sz = package[20:22]
+def removeFromArray(clientsWindows, address, indexToRemove):
+  clientsWindows[address][2] = [i for i in clientsWindows[address][2] if i[0] != indexToRemove]
+
+def indexInArray(clientsWindows, address, indexToFind):
+  for i in clientsWindows[address][2]:
+    if i[0] == indexToFind:
+      return True
+  return False
+
+def generateErrorChecksum(seq, pError):
+  seqNum = struct.unpack('!q', seq)[0]
+
+  if(random.random() < pError):
+    return struct.pack("!q", seqNum + 1)
+  return seq
+
+def moveWindow(clientsWindows, address, seq, message, file):
+  firstElement = clientsWindows[address][0]
+
+  while(indexInArray(clientsWindows, address, firstElement)): 
+    clientsWindows[address][0] += 1
+    clientsWindows[address][1] += 1
+    addMsgToLog(firstElement, message, file)        
+    removeFromArray(clientsWindows,address,firstElement)
+    firstElement += 1
+
+def validMessage(seqnum, sec, nsec, clientsWindows, address, udp, windowSize, message):
+  seq = struct.unpack('!q', seqnum)[0]
+  isValid = False
+  if address in clientsWindows:
+    if isInsideWindow(seq, clientsWindows, address):
+      # Mensagem está dentro da janela
+      clientsWindows[address][2].append([seq,message])
+      isValid = True
+    else:
+      isValid = False
+  else:
+      clientsWindows[address] = [1,windowSize,[]]
+      clientsWindows[address][2].append([seq,message])
+      isValid = True
+
+  if needsRetransmission(seq, clientsWindows, address):
+    checksumAck = generateCheckSum(seqnum + sec + nsec)
+    udp.sendto(seqnum + sec + nsec + checksumAck, address)
+
+  return isValid
+
+def receiveMessages(address, data, clientsWindows, udp, windowSize, file, pError):
+  seqnum = data[0:8]
+  sec = data[8:16]
+  nsec = data[16:20]
+
+  sz = data[20:22]
   msgSize = struct.unpack('!h', sz)[0]
 
-  message = package[22:22+msgSize]
-  receivedChecksum = package[22+msgSize:22+msgSize+16]
-  
+  message = data[22:22+msgSize]
+  receivedChecksum = data[22+msgSize:22+msgSize+16]
+
   # Checksum #
-  checksum = generateCheckSum(seqnum, sec, nsec, sz, message)
+  checksum = generateCheckSum(generateErrorChecksum(seqnum, pError) + sec + nsec + sz + message)
+
+  seq = struct.unpack('!q', seqnum)[0]
 
   # Valid message #
   if(checksum == receivedChecksum):
-    print('Valid message!')
-  
-    seqnum = struct.unpack('!q', seqnum)[0]
-    sec = struct.unpack('!q', sec)[0]
-    nsec = struct.unpack('!l', nsec)[0]
     sz = struct.unpack('!h', sz)[0]
     message = message.decode('latin1')
+    
+    lock.acquire()
+    if(validMessage(seqnum, sec, nsec, clientsWindows, address, udp, windowSize, message)): 
+      if (seq == clientsWindows[address][0]):
+        moveWindow(clientsWindows, address, seq, message, file)
 
-    print('seqnum', seqnum)
-    print('seq', sec)
-    print('nseq', nsec)
-    print('sz', msgSize)
-    print('message', message)
+    else:
+      print('Message outside the window. Message %d will be discarded' % seq)
+    
+    lock.release()
 
   else: 
-    print('Wrong checksum')
+    print('Wrong checksum. Message %d will be discarded' % seq)
+
+def main(file, port, windowSize, pError):
+  udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  udp.bind(('', port))
+
+  clientsWindows = {}
+  clients = []
+
+  while True:
+    data,address = udp.recvfrom(16422)
+    newThread = threading.Thread(target=receiveMessages, args=(address, data, clientsWindows, udp, windowSize, file, pError))
+    clients.append(newThread)
+    newThread.start()
 
   udp.close()
 
 if __name__ == "__main__":
 	main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]))
 
-# Run command: python client.py teste.txt 127.0.0.1:5000 1 1 1

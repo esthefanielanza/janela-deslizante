@@ -964,3 +964,37 @@ XULAMBS
 [   65.315798] IPv6: ADDRCONF(NETDEV_CHANGE): wlp3s0: link becomes ready
 [   65.845353] IPv6: wlp3s0: IPv6 duplicate address fe80::2db6:aa8e:ac4a:fd40 used by 5c:c9:d3:42:6a:aa detected!
 [   73.816652] fuse init (API version 7.27)
+[   13.865423] ath: Country alpha2 being used: 00
+[   13.865424] ath: Regpair used: 0x60
+[   13.937960] input: HDA Intel PCH Headphone Mic as /devices/pci0000:00/0000:00:1b.0/sound/card0/input16
+[   13.938114] input: HDA Intel PCH HDMI/DP,pcm=3 as /devices/pci0000:00/0000:00:1b.0/sound/card0/input18
+[   13.967629] psmouse serio4: elantech: assuming hardware version 4 (with firmware version 0x361f01)
+[   13.981200] psmouse serio4: elantech: Synaptics capabilities query result 0x00, 0x15, 0x0c.
+[   13.983434] ieee80211 phy0: Selected rate control algorithm 'minstrel_ht'
+[   13.983790] ieee80211 phy0: Atheros AR9485 Rev:1 mem=0xffffbcb581900000, irq=17
+[   13.995288] psmouse serio4: elantech: Elan sample query result 03, 23, 75
+[   13.998659] platform regulatory.0: Direct firmware load for regulatory.db failed with error -2
+[   13.998663] cfg80211: failed to load regulatory.db
+[   14.063698] input: ETPS/2 Elantech Touchpad as /devices/platform/i8042/serio4/input/input15
+[   14.410155] cryptd: max_cpu_qlen set to 1000
+[   14.495917] AVX version of gcm_enc/dec engaged.
+[   14.495918] AES CTR mode by8 optimization enabled
+[   15.489834] Bluetooth: Core ver 2.22
+[   15.489859] NET: Registered protocol family 31
+[   15.489861] Bluetooth: HCI device and connection manager initialized
+[   15.489865] Bluetooth: HCI socket layer initialized
+[   15.489868] Bluetooth: L2CAP socket layer initialized
+[   15.489876] Bluetooth: SCO socket layer initialized
+[   15.490635] intel_rapl: Found RAPL domain package
+[   15.490637] intel_rapl: Found RAPL domain core
+[   15.490638] intel_rapl: Found RAPL domain uncore
+[   15.549826] r8169 0000:04:00.2 enp4s0f2: renamed from eth0
+[   15.562473] usbcore: registered new interface driver btusb
+[   15.656724] media: Linux media interface: v0.10
+[   15.709348] videodev: Linux video capture interface: v2.00
+[   15.879236] usbcore: registered new interface driver ath3k
+[   15.920855] usb 1-1.1: USB disconnect, device number 3
+[   16.071477] mousedev: PS/2 mouse device common for all mice
+[   16.074701] ath9k 0000:03:00.0 wlp3s0: renamed from wlan0
+[   16.126724] usb 1-1.1: new full-speed USB device number 5 using ehci-pci
+[   16.145123] uvcvideo: Found UVC 1.00 device USB Camera (13d3:5165)
