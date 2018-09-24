@@ -36,13 +36,18 @@ def generateErrorChecksum(seq, pError):
     return struct.pack("!q", seqNum + 1)
   return seq
 
-def moveWindow(clientsWindows, address, seq, message, file):
+def firstElementMessage(window, seqnum):
+  for package in window:
+    if(package[0] == seqnum):
+      return package[1]
+
+def moveWindow(clientsWindows, address, seq, file):
   firstElement = clientsWindows[address][0]
 
   while(indexInArray(clientsWindows, address, firstElement)): 
     clientsWindows[address][0] += 1
     clientsWindows[address][1] += 1
-    addMsgToLog(firstElement, message, file)        
+    addMsgToLog(firstElement, firstElementMessage(clientsWindows[address][2], firstElement), file)        
     removeFromArray(clientsWindows,address,firstElement)
     firstElement += 1
 
@@ -91,7 +96,7 @@ def receiveMessages(address, data, clientsWindows, udp, windowSize, file, pError
     lock.acquire()
     if(validMessage(seqnum, sec, nsec, clientsWindows, address, udp, windowSize, message)): 
       if (seq == clientsWindows[address][0]):
-        moveWindow(clientsWindows, address, seq, message, file)
+        moveWindow(clientsWindows, address, seq, file)
 
     else:
       print('Message outside the window. Message %d will be discarded' % seq)
